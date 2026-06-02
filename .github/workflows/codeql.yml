@@ -45,6 +45,7 @@ jobs:
         include:
         - name: cuda
           language: c-cpp
+          # CodeQL treats CUDA sources as C/C++, so use the CodeQL language identifier for the SARIF category.
           category: c-cpp
           build-mode: manual
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'

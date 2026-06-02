@@ -84,6 +84,7 @@ V3_FLAGS := -DCUTLASS_API_v3 -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTE_SM90_EXTE
 
 all: $(TARGET)
 
+# Build object files for CodeQL analysis without linking the final executable.
 codeql: $(OBJS)
 
 $(TARGET): $(OBJS)
