@@ -97,10 +97,11 @@ jobs:
       if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        NVCC_PATH="$(command -v nvcc)"
-        test -n "$NVCC_PATH"
-        test -x "$NVCC_PATH"
-        make -C src/cuda codeql NVCC="$NVCC_PATH" -j$(nproc)
+        NVCC_PATH="$(command -v nvcc || true)"
+        test -n "$NVCC_PATH" || { echo "Error: nvcc not found in PATH"; exit 1; }
+        test -x "$NVCC_PATH" || { echo "Error: nvcc is not executable"; exit 1; }
+        MAKE_JOBS="$(nproc)"
+        make -C src/cuda codeql NVCC="$NVCC_PATH" -j"$MAKE_JOBS"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
