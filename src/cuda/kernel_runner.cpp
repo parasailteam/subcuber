@@ -31,6 +31,12 @@ using KernelRunFn = int (*)(KernelRunnerBuffers, int, int, int, int, int,
   extern "C" int function_name(KernelRunnerBuffers, int, int, int, int, int, \
                                cudaStream_t *, int, int, float *)
 
+DECLARE_KERNEL_RUN_FN(run_cublas_f32);
+DECLARE_KERNEL_RUN_FN(run_cublas_f16);
+DECLARE_KERNEL_RUN_FN(run_cublaslt_f32);
+DECLARE_KERNEL_RUN_FN(run_cublaslt_f16);
+
+#ifndef STRASSEN_DISABLE_CUDA_DECLARATIONS
 DECLARE_KERNEL_RUN_FN(run_ampere_f32_sw_tile);
 DECLARE_KERNEL_RUN_FN(run_ampere_f32_sw_tile_128x128);
 DECLARE_KERNEL_RUN_FN(run_ampere_f32_sw_interleaved_presum);
@@ -70,8 +76,7 @@ DECLARE_KERNEL_RUN_FN(run_volta_f32_sw_interleaved_presum);
 DECLARE_KERNEL_RUN_FN(run_volta_f32_sw_interleaved_presum_level_2);
 DECLARE_KERNEL_RUN_FN(run_volta_f32_sw_kernel_presum);
 DECLARE_KERNEL_RUN_FN(run_volta_f32_sw_fused_presum);
-DECLARE_KERNEL_RUN_FN(run_cublas_f32);
-DECLARE_KERNEL_RUN_FN(run_cublas_f16);
+#endif
 
 #undef DECLARE_KERNEL_RUN_FN
 
@@ -86,13 +91,20 @@ struct KernelEntry {
 static const KernelEntry kKernels[] = {
     {"cublas_f32", "volta", "f32", 0, run_cublas_f32},
     {"cublas_f16", "volta", "f16", 0, run_cublas_f16},
+  {"cublaslt_f32", "volta", "f32", 0, run_cublaslt_f32},
+  {"cublaslt_f16", "volta", "f16", 0, run_cublaslt_f16},
     {"cublas_f32", "ampere", "f32", 0, run_cublas_f32},
     {"cublas_f16", "ampere", "f16", 0, run_cublas_f16},
+  {"cublaslt_f32", "ampere", "f32", 0, run_cublaslt_f32},
+  {"cublaslt_f16", "ampere", "f16", 0, run_cublaslt_f16},
+  {"cublas_f32", "hopper", "f32", 0, run_cublas_f32},
+  {"cublas_f16", "hopper", "f16", 0, run_cublas_f16},
+  {"cublaslt_f32", "hopper", "f32", 0, run_cublaslt_f32},
+  {"cublaslt_f16", "hopper", "f16", 0, run_cublaslt_f16},
+#ifndef STRASSEN_DISABLE_CUDA_DECLARATIONS
     {"ampere_f16_cutlass_128x256", "ampere", "f16", 0, run_ampere_f16_cutlass_128x256},
     {"ampere_f32_cutlass_128x128", "ampere", "f32", 0, run_ampere_f32_cutlass_128x128},
     {"ampere_f32_cutlass_256x128", "ampere", "f32", 0, run_ampere_f32_cutlass_256x128},
-    {"cublas_f32", "hopper", "f32", 0, run_cublas_f32},
-    {"cublas_f16", "hopper", "f16", 0, run_cublas_f16},
     {"hopper_f16_cutlass_128x128_pingpong", "hopper", "f16", 0, run_hopper_f16_cutlass_128x128_pingpong},
     {"hopper_f16_cutlass_128x256_cooperative", "hopper", "f16", 0, run_hopper_f16_cutlass_128x256_cooperative},
     {"hopper_f32_cutlass_128x128", "hopper", "f32", 0, run_hopper_f32_cutlass_128x128},
@@ -129,6 +141,7 @@ static const KernelEntry kKernels[] = {
     // {"volta_f32_sw_interleaved_presum_level_2", "volta", "f32", 2, run_volta_f32_sw_interleaved_presum_level_2},
     {"volta_f32_sw_kernel_presum", "volta", "f32", 1, run_volta_f32_sw_kernel_presum},
     {"volta_f32_sw_fused_presum", "volta", "f32", 1, run_volta_f32_sw_fused_presum},
+  #endif
 };
 
 static std::string lower(std::string value) {
