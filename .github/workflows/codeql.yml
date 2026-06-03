@@ -18,16 +18,20 @@ on:
     branches: [ "main" ]
   schedule:
     - cron: '40 2 * * 1'
+  paths-ignore:
+    - "*.cu"
+    - "*.cuh"
+    - "*.cudafe1.cpp"
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze (${{ matrix.name }})
     # Runner size impacts CodeQL analysis time. To learn more, please see:
     #   - https://gh.io/recommended-hardware-resources-for-running-codeql
     #   - https://gh.io/supported-runners-and-hardware-resources
     #   - https://gh.io/using-larger-runners (GitHub.com only)
     # Consider using larger runners or machines with greater resources for possible analysis time improvements.
-    runs-on: 'ubuntu-latest'
+    runs-on: 'GCRSANDBOX406'
     permissions:
       # required for all workflows
       security-events: write
@@ -43,12 +47,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - language: c-cpp
-          build-mode: autobuild
-        - language: python
-          build-mode: none
+        - name: cuda
+          language: c-cpp
+          # CUDA is analyzed through the C/C++ extractor, which requires traced compilation commands.
+          build-mode: manual
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
+        # Python is omitted from this advanced workflow because this repository uses CodeQL default setup for Python.
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
         # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
         # To learn more about changing the languages that are analyzed or customizing the build mode for your analysis,
@@ -58,6 +63,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     # Add any setup steps before running the `github/codeql-action/init` action.
     # This includes steps like installing compilers or runtimes (`actions/setup-node`
@@ -84,19 +91,24 @@ jobs:
     # to build your code.
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    - name: Install CUDA toolkit
+      if: matrix.name == 'cuda'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y nvidia-cuda-toolkit
+
     - name: Run manual build steps
       if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'If you are using a "manual" build mode for one or more of the' \
-          'languages you are analyzing, replace this with the commands to build' \
-          'your code, for example:'
-        echo '  make bootstrap'
-        echo '  make release'
-        exit 1
+        NVCC_PATH="$(command -v nvcc)" || { echo "Error: nvcc not found in PATH. Ensure the 'Install CUDA toolkit' step succeeded."; exit 1; }
+        MAKE_JOBS="$(nproc)"
+        # Use SPLIT_COMPILE=7 to leave one core available for system tasks on the 8-core runner.
+        make -C src/cuda codeql BUILD="LITE" NVCC="$NVCC_PATH" SPLIT_COMPILE=7 -j"$MAKE_JOBS"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
       with:
-        category: "/language:cpp"
-        category: "/language:cuda"
+        # Use a fixed SARIF category for this advanced C/C++ analysis; CUDA is analyzed as C/C++.
+        category: "/language:c-cpp"

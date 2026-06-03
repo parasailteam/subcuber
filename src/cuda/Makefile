@@ -80,9 +80,12 @@ KERNEL_PRESUM_FLAGS := -DCUTLASS_API_v2 -Dkernel_PRESUM -DTILE_SIZE_256 -DSPLIT_
 CUBIC_FLAGS := -DCUTLASS_API_v2 -DSPLIT_K=1
 V3_FLAGS := -DCUTLASS_API_v3 -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED
 
-.PHONY: all clean run
+.PHONY: all clean codeql run
 
 all: $(TARGET)
+
+# Build object files for CodeQL analysis without linking the final executable.
+codeql: $(OBJS)
 
 $(TARGET): $(OBJS)
 	$(NVCC) $(COMMON_FLAGS) $(OBJS) -lcublas -o $@
