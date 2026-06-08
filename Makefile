@@ -3,17 +3,21 @@ NVCC ?= $(CUDA_HOME)/bin/nvcc
 CXX ?= g++
 SPLIT_COMPILE ?= 1
 PRESUM_LEVEL_2_SPLIT_COMPILE ?= 10
-BUILD_DIR ?= build/kernel_runner
-TARGET ?= kernel_runner
-NO_CUDA_DECL_TARGET ?= kernel_runner_no_cuda_declarations
-NO_CUDA_DECL_BUILD_DIR ?= $(BUILD_DIR)/no_cuda_declarations
 
-CUTLASS := ../../cutlass/include
-CUTLASS_COMMON := ../../cutlass/examples/common
-UTIL_INCLUDE := ../../cutlass/tools/util/include
-STRASSEN_CUTLASS := ../../include
-SRC_ROOT := ..
-ROOT := ../..
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+CUDA_SRC_DIR := $(MAKEFILE_DIR)src/cuda
+BUILD_ROOT ?= $(MAKEFILE_DIR)build
+BUILD_DIR ?= $(BUILD_ROOT)/obj/kernel_runner
+TARGET ?= $(BUILD_ROOT)/kernel_runner
+NO_CUDA_DECL_TARGET ?= $(BUILD_ROOT)/kernel_runner_no_cuda_declarations
+NO_CUDA_DECL_BUILD_DIR ?= $(BUILD_ROOT)/obj/no_cuda_declarations
+
+CUTLASS := $(MAKEFILE_DIR)cutlass/include
+CUTLASS_COMMON := $(MAKEFILE_DIR)cutlass/examples/common
+UTIL_INCLUDE := $(MAKEFILE_DIR)cutlass/tools/util/include
+STRASSEN_CUTLASS := $(MAKEFILE_DIR)include
+SRC_ROOT := $(MAKEFILE_DIR)src
+ROOT := $(MAKEFILE_DIR)
 CUDA_CCCL_INCLUDE := $(CUDA_HOME)/include/cccl
 CUDA_TARGET_INCLUDE := $(CUDA_HOME)/targets/x86_64-linux/include
 
@@ -100,6 +104,7 @@ V3_FLAGS := -DCUTLASS_API_v3 -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTE_SM90_EXTE
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
+	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCC_FLAGS) $(OBJS) $(LDLIBS) -o $@
 
 disable_cuda_declarations: $(NO_CUDA_DECL_TARGET)
@@ -108,20 +113,19 @@ no_cuda_declarations: disable_cuda_declarations
 
 no-cuda-declarations: disable_cuda_declarations
 
-codeql: $(NO_CUDA_DECL_OBJS)
-	
 $(NO_CUDA_DECL_TARGET): $(NO_CUDA_DECL_OBJS)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXX_FLAGS) $(NO_CUDA_DECL_OBJS) $(CXX_LDFLAGS) $(CXX_LDLIBS) -o $@
 
-$(BUILD_DIR)/%.o: %.cpp kernel_runner_support.cuh
+$(BUILD_DIR)/%.o: $(CUDA_SRC_DIR)/%.cpp $(CUDA_SRC_DIR)/kernel_runner_support.cuh
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXX_FLAGS) $(CXX_INCLUDES) -MMD -MP -c $< -o $@
 
-$(NO_CUDA_DECL_BUILD_DIR)/%.o: %.cpp kernel_runner_support.cuh
+$(NO_CUDA_DECL_BUILD_DIR)/%.o: $(CUDA_SRC_DIR)/%.cpp $(CUDA_SRC_DIR)/kernel_runner_support.cuh
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXX_FLAGS) -DSTRASSEN_DISABLE_CUDA_DECLARATIONS $(CXX_INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD_DIR)/kernels/%.o: kernels/%.cu kernel_runner_support.cuh
+$(BUILD_DIR)/kernels/%.o: $(CUDA_SRC_DIR)/kernels/%.cu $(CUDA_SRC_DIR)/kernel_runner_support.cuh
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCC_FLAGS) $(SPLIT_COMPILE_FLAGS) $(INCLUDES) \
 	  $(if $(findstring /hopper/,$<),$(HOPPER_GENCODE),$(if $(findstring /volta/,$<),$(VOLTA_GENCODE),$(AMPERE_GENCODE))) \
@@ -134,7 +138,7 @@ $(BUILD_DIR)/kernels/%.o: kernels/%.cu kernel_runner_support.cuh
 	  -MMD -MP -c $< -o $@
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET) $(NO_CUDA_DECL_TARGET)
+	rm -rf $(BUILD_ROOT) $(TARGET) $(NO_CUDA_DECL_TARGET)
 
 -include $(DEPS)
 -include $(NO_CUDA_DECL_DEPS)
